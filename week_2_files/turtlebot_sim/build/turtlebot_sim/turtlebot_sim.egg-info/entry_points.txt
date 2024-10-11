@@ -1,3 +1,0 @@
-[console_scripts]
-teleport = turtlebot_sim.turtle:main
-
