@@ -143,6 +143,7 @@ if __name__ == '__main__':
 
 
 
+
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
@@ -163,8 +164,19 @@ class SquareTurtleBotNode(Node):
         self.side_length = 1.0  # Length of one side of the square
         self.current_length = 0.0
         self.current_angle = 0.0
+        self.current_pos = (0.0,0.0)
         self.step_count = 0  # Number of completed sides
         self.total_steps = 4  # Total sides to move
+
+    def odometry(self, msg):
+        position = msg.pose.pose.position
+        orientation = msg.pose.pose.orientation 
+        roll, pitch, yaw = tf_transformations.euler_from_quaternion(
+            [orientation.x, orientation.y, orientation.z, orientation.w]
+        )
+        
+        self.current_pose = (position.x, position.y, yaw)
+
 
     def timer_callback(self):
         if self.step_count >= self.total_steps:
@@ -180,9 +192,8 @@ class SquareTurtleBotNode(Node):
         speed = 0.2
         self.twist_msg.linear.x = speed
         self.publisher.publish(self.twist_msg)
-
-        self.current_length += speed * 0.1  # Assuming 0.1 seconds elapsed per timer callback
-        self.get_logger().info(f'Step {self.step_count + 1}: Moving forward: {self.current_length:.2f} / {self.side_length:.2f}')
+        #self.current_length += (self.side_length - self.current_pose.x)
+        #self.get_logger().info(f'Step {self.step_count + 1}: Moving forward: {self.current_length:.2f} / {self.side_length:.2f}')
 
         if self.current_length >= self.side_length:
             self.twist_msg.linear.x = 0.0  # Stop forward movement
