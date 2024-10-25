@@ -142,8 +142,6 @@ if __name__ == '__main__':
 
 
 
-
-
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
@@ -190,14 +188,20 @@ class SquareTurtleBotNode(Node):
 
     def move_forward(self):
         speed = 0.2
+
+        if self.step_count == 0:
+            self.start_position = self.current_pos.x
+            self.start_time = self.get_clock().now().seconds_nanoseconds()[0]
+
         self.twist_msg.linear.x = speed
         self.publisher.publish(self.twist_msg)
-        #self.current_length += (self.side_length - self.current_pose.x)
+        self.current_length = self.current_pose.x - self.start_position
         #self.get_logger().info(f'Step {self.step_count + 1}: Moving forward: {self.current_length:.2f} / {self.side_length:.2f}')
 
         if self.current_length >= self.side_length:
             self.twist_msg.linear.x = 0.0  # Stop forward movement
             self.publisher.publish(self.twist_msg)
+            self.start_time = self.get_clock().now().seconds_nanoseconds()[0]
             self.current_length = 0.0
             self.state = 'rotating'
             self.get_logger().info(f'Step {self.step_count + 1}: Reached side length, switching to rotating.')
@@ -207,9 +211,11 @@ class SquareTurtleBotNode(Node):
         self.twist_msg.angular.z = speed
         self.publisher.publish(self.twist_msg)
 
-        self.current_angle += speed * 0.1  # Assuming 0.1 seconds elapsed per timer callback
+        elapsed_time = self.get_clock().now().seconds_nanoseconds()[0] - self.start_time
 
-        if self.current_angle >= 1.57:  # 90 degrees in radians
+        self.current_angle += speed * elapsed_time  # 
+
+        if elapsed_time >= ((math.pi)/2)/speed :  # 90 degrees in radians
             self.twist_msg.angular.z = 0.0  # Stop rotation
             self.publisher.publish(self.twist_msg)
             self.current_angle = 0.0
