@@ -196,26 +196,32 @@ class SquareTurtleBotNode(Node):
 
         # Initialize start_position only once
         if self.start_position is None:
-            self.start_position = self.current_x  # Set the starting position
+            self.start_positionx = self.current_x  # Set the starting position
+            self.start_positiony = self.current_y
 
         self.twist_msg.linear.x = speed
         self.publisher.publish(self.twist_msg)
 
         # Update current_length based on the current pose
-        self.current_length = self.current_x - self.start_position
-        self.get_logger().info(f'Step {self.step_count + 1}: Moving forward: {self.current_length:.2f} / {self.side_length:.2f}')
+        self.current_lengthx = abs(self.current_x - self.start_positionx)
+        self.current_lengthy = abs(self.current_y - self.start_positiony)
+        self.current_length = math.sqrt(self.current_lengthx**2 + self.current_lengthy**2)
+        #self.get_logger().info(f'Step {self.step_count + 1}: Moving forward: {self.current_length:.2f} / {self.side_length:.2f}')
 
         # Check if the length of the side has been reached
         if abs(self.current_length) >= self.side_length:
-            self.twist_msg.linear.x = 0.0  # Stop forward movement
+            self.twist_msg.linear.x = 0.0
             self.publisher.publish(self.twist_msg)
-            self.start_position = None  # Reset start_position for the next side
-            self.current_length = 0.0  # Reset current_length for the next side
+            self.current_length = 0.0
             self.state = 'rotating'
+            # Move to the rotating state immediately
+
+            self.current_yaw = self.current_yaw  # Keep the current yaw for checking
             self.get_logger().info(f'Step {self.step_count + 1}: Reached side length, switching to rotating.')
 
     def rotate(self):
         speed = 0.5
+        twist = Twist()
         self.twist_msg.angular.z = speed
         self.publisher.publish(self.twist_msg)
 
@@ -223,17 +229,15 @@ class SquareTurtleBotNode(Node):
         if abs(self.current_yaw) >= (math.pi / 2):  # 90 degrees in radians
             self.twist_msg.angular.z = 0.0  # Stop rotation
             self.publisher.publish(self.twist_msg)
-            
-            # Resetting yaw to 0 only if the robot completed the rotation
-            self.current_yaw = 0.0  
+
+            self.current_yaw = 0.0  # Resetting yaw after a full rotation
             self.start_position = None  # Reset the start position for the next side
             self.state = 'moving_forward'
             self.step_count += 1  # Increment step count
             self.get_logger().info(f'Step {self.step_count}: Completed rotation, switching to moving forward.')
 
-
     def stop_robot(self):
-        # Stop the robot by sending zero velocities
+            # Stop the robot by sending zero velocities
         self.twist_msg.linear.x = 0.0
         self.twist_msg.angular.z = 0.0
         self.publisher.publish(self.twist_msg)
@@ -252,4 +256,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
