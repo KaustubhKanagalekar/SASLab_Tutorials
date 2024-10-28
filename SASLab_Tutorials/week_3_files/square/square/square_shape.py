@@ -206,7 +206,7 @@ class SquareTurtleBotNode(Node):
         self.get_logger().info(f'Step {self.step_count + 1}: Moving forward: {self.current_length:.2f} / {self.side_length:.2f}')
 
         # Check if the length of the side has been reached
-        if abs(self.current_length/self.side_length >=1):
+        if abs(self.current_length) >= self.side_length:
             self.twist_msg.linear.x = 0.0  # Stop forward movement
             self.publisher.publish(self.twist_msg)
             self.start_position = None  # Reset start_position for the next side
