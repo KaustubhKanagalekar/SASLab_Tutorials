@@ -143,9 +143,17 @@ if __name__ == '__main__':
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry 
-import tf_transformations 
-import math 
+from nav_msgs.msg import Odometry
+import tf_transformations
+import math
+
+def normalize_angle(angle):
+        """Normalize an angle to the range [-π, π]."""
+        while angle > math.pi:
+            angle -= 2 * math.pi
+        while angle < -math.pi:
+            angle += 2 * math.pi
+        return angle
 
 class SquareTurtleBotNode(Node):
 
@@ -159,6 +167,7 @@ class SquareTurtleBotNode(Node):
         self.state = 'moving_forward'  # Initial state
         self.side_length = 1.0  # Length of one side of the square
         self.current_length = 0.0
+        self.previous_position = (0.0, 0.0)  # Store previous x, y
         self.current_angle = 0.0
         self.current_x = 0.0
         self.current_y = 0.0
@@ -166,7 +175,6 @@ class SquareTurtleBotNode(Node):
         
         self.step_count = 0  # Number of completed sides
         self.total_steps = 4  # Total sides to move
-        self.start_position = None
 
     def odometry_callback(self, msg):
         position = msg.pose.pose.position
@@ -179,6 +187,18 @@ class SquareTurtleBotNode(Node):
         self.current_x = position.x
         self.current_y = position.y
         self.current_yaw = yaw
+
+        # Calculate distance traveled since the last update
+        distance = math.sqrt((self.current_x - self.previous_position[0]) ** 2 +
+                             (self.current_y - self.previous_position[1]) ** 2)
+
+        # Update current length based on distance traveled
+        if self.state == 'moving_forward':
+            self.current_length += distance
+
+        # Update previous position
+        self.previous_position = (self.current_x, self.current_y)
+
         self.get_logger().info(f"Updated current position: x={self.current_x}, y={self.current_y}, yaw={self.current_yaw}")
 
     def timer_callback(self):
@@ -191,53 +211,72 @@ class SquareTurtleBotNode(Node):
         elif self.state == 'rotating':
             self.rotate()
 
+
+
     def move_forward(self):
         speed = 0.2
-
-        # Initialize start_position only once
-        if self.start_position is None:
-            self.start_positionx = self.current_x  # Set the starting position
-            self.start_positiony = self.current_y
 
         self.twist_msg.linear.x = speed
         self.publisher.publish(self.twist_msg)
 
-        # Update current_length based on the current pose
-        self.current_lengthx = abs(self.current_x - self.start_positionx)
-        self.current_lengthy = abs(self.current_y - self.start_positiony)
-        self.current_length = math.sqrt(self.current_lengthx**2 + self.current_lengthy**2)
-        #self.get_logger().info(f'Step {self.step_count + 1}: Moving forward: {self.current_length:.2f} / {self.side_length:.2f}')
+        self.get_logger().info(f'Step {self.step_count + 1}: Moving forward: {self.current_length:.2f} / {self.side_length:.2f}')
 
         # Check if the length of the side has been reached
-        if abs(self.current_length) >= self.side_length:
-            self.twist_msg.linear.x = 0.0
+        if self.current_length >= self.side_length:
+            self.twist_msg.linear.x = 0.0  # Stop forward movement
             self.publisher.publish(self.twist_msg)
-            self.current_length = 0.0
+            self.current_length = 0.0  # Reset current_length for the next side
             self.state = 'rotating'
-            # Move to the rotating state immediately
-
-            self.current_yaw = self.current_yaw  # Keep the current yaw for checking
             self.get_logger().info(f'Step {self.step_count + 1}: Reached side length, switching to rotating.')
-
+    
     def rotate(self):
         speed = 0.5
-        twist = Twist()
         self.twist_msg.angular.z = speed
         self.publisher.publish(self.twist_msg)
 
-        # Check for completion of rotation
-        if abs(self.current_yaw) >= (math.pi / 2):  # 90 degrees in radians
+        # Use the difference between current yaw and the target yaw
+        target_yaw = self.step_count * (math.pi / 2)  # 90 degrees in radians for each side
+        normalized_current_yaw = normalize_angle(self.current_yaw)  # Normalize current yaw
+        self.get_logger().info(f'norm curr yaw : {normalized_current_yaw}')
+
+        normalized_target_yaw = normalize_angle(target_yaw)
+        self.get_logger().info(f'norm target yaw : {normalized_target_yaw}')
+        yaw_diff = normalized_current_yaw - normalized_target_yaw  # Normalize the yaw difference
+        yaw_diff = normalize_angle(yaw_diff)
+
+        # Check if the yaw difference indicates that the rotation is complete
+        if abs(yaw_diff) >= (math.pi / 2):  # Allow a small tolerance for precision
             self.twist_msg.angular.z = 0.0  # Stop rotation
             self.publisher.publish(self.twist_msg)
 
-            self.current_yaw = 0.0  # Resetting yaw after a full rotation
-            self.start_position = None  # Reset the start position for the next side
+            # Update step count and state
             self.state = 'moving_forward'
             self.step_count += 1  # Increment step count
             self.get_logger().info(f'Step {self.step_count}: Completed rotation, switching to moving forward.')
+            
+            # Reset current_length and previous_position for the next side
+            self.current_length = 0.0
+            self.previous_position = (self.current_x, self.current_y)  # Reset previous position
+            
+    '''
+    def rotate(self):
+        speed = 0.5
+        self.twist_msg.angular.z = speed
+        self.publisher.publish(self.twist_msg)
+
+        self.current_angle += speed * 0.1  # Assuming 0.1 seconds elapsed per timer callback
+
+        if self.current_angle >= 1.57:  # 90 degrees in radians
+            self.twist_msg.angular.z = 0.0  # Stop rotation
+            self.publisher.publish(self.twist_msg)
+            self.current_angle = 0.0
+            self.state = 'moving_forward'
+            self.step_count += 1  # Increment step count
+            self.get_logger().info(f'Step {self.step_count}: Completed rotation, switching to moving forward.')
+            '''
 
     def stop_robot(self):
-            # Stop the robot by sending zero velocities
+        # Stop the robot by sending zero velocities
         self.twist_msg.linear.x = 0.0
         self.twist_msg.angular.z = 0.0
         self.publisher.publish(self.twist_msg)
