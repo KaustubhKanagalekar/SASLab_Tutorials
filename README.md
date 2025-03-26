@@ -11,3 +11,8 @@ The second set of tutorials required the creation of the same vacuum simulation,
 
 ## Week 3 Tutorials 
 The third set of tutorials required implementing the scripts from the first two weeks onto the Turtlebots. The vacuum script was modified to loop only once before stopping. Additionally, I also created a script involving tracing a square. 
+
+
+
+To view the media behind these exercises, click here- 
+👉 [Tutorials Media](https://github.com/KaustubhKanagalekar/SASLab_Tutorials/releases/latest)
