@@ -49,7 +49,7 @@ A Docker container was created and hosted over Chrome Remote Desktop for visuali
 1. Create the package with the following command:
    - `ros2 pkg create --build-type ament_python --license Apache-2.0 <package_name>`
 2. Modify and add code to the package as needed.
-3. Add dependencies and access points in the following files:
+3. Add dependencies and access/entry points in the following files:
    - `setup.py`
    - `setup.cfg`
    - `package.xml`
@@ -65,7 +65,7 @@ A Docker container was created and hosted over Chrome Remote Desktop for visuali
    - `ros2 run <entry_point> <package_name>`
 
 #### Additional Information:
-- **Gazebo** is already installed with Chrome Remote Desktop for visualization purposes.
+- **Gazebo** is already installed with Chrome Remote Desktop for visualisation purposes.
 ####
 To view and download the media behind these exercises, click here- 
 👉 [Tutorials Media](https://github.com/KaustubhKanagalekar/SASLab_Tutorials/releases/latest)
